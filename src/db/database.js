@@ -10,6 +10,10 @@ db.version(1).stores({
   systemLogs: 'id, timestamp, type, message'
 });
 
+db.version(2).stores({
+  tasks: 'id, title, dueDate, status, effort, linkedGoalId, linkedCheckpointId, isDaily, createdAt'
+});
+
 // Helper function to seed initial sci-fi demo data if database is empty
 export async function seedSampleData() {
   const isInitialized = await db.systemLogs.get('log-001');

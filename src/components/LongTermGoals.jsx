@@ -18,7 +18,7 @@ export default function LongTermGoals() {
   const [goalTargetDate, setGoalTargetDate] = useState('2026-12-31');
   const [goalCategory, setGoalCategory] = useState('CYBERNETICS');
 
-  // Sub-Task Action Item Form State
+  // Checkpoint Form State
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [activeGoalIdForSub, setActiveGoalIdForSub] = useState(null);
   const [subTitle, setSubTitle] = useState('');
@@ -80,7 +80,7 @@ export default function LongTermGoals() {
     }
   };
 
-  // Add Sub-Action Item to Goal
+  // Add Checkpoint to Goal
   const handleOpenAddSub = (goalId) => {
     cyberAudio.playClick();
     setActiveGoalIdForSub(goalId);
@@ -178,7 +178,7 @@ export default function LongTermGoals() {
             LONG-TERM GOALS // STRATEGIC OBJECTIVES
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            High-level mission milestones with daily actionable task subroutines.
+            High-level mission milestones with key checkpoints.
           </p>
         </div>
 
@@ -272,13 +272,13 @@ export default function LongTermGoals() {
                   />
                 </div>
 
-                {/* Expanded Sub-Actions Checklist */}
+                {/* Expanded Checkpoints List */}
                 {isExpanded && (
                   <div className="mt-5 pt-4 border-t border-[#9d4edd]/20 space-y-3 animate-fadeIn">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-[#00f0ff] uppercase tracking-wider flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-[#ffe600]" />
-                        DAILY ACTION SUBROUTINES ({subItems.filter(s => s.completed).length}/{subItems.length})
+                        CHECKPOINTS ({subItems.filter(s => s.completed).length}/{subItems.length})
                       </h4>
 
                       <button
@@ -286,14 +286,14 @@ export default function LongTermGoals() {
                         className="flex items-center gap-1 text-xs px-2.5 py-1 bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/40 rounded transition"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>ADD ACTION ITEM</span>
+                        <span>ADD CHECKPOINT</span>
                       </button>
                     </div>
 
                     <div className="space-y-2">
                       {subItems.length === 0 ? (
                         <p className="text-xs text-slate-500 italic py-2">
-                          No action items assigned. Add daily tasks to push this goal forward.
+                          No checkpoints defined. Add milestones to track this goal's progress.
                         </p>
                       ) : (
                         subItems.map((sub) => {
@@ -436,17 +436,17 @@ export default function LongTermGoals() {
         </div>
       )}
 
-      {/* Add Sub-Action Item Modal */}
+      {/* Add Checkpoint Modal */}
       {isSubModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="w-full max-w-md cyber-panel border border-[#00f0ff]/50 p-6 rounded-lg shadow-2xl">
             <h3 className="text-sm font-bold tracking-widest text-[#00f0ff] uppercase mb-4">
-              ADD GOAL ACTION ITEM
+              ADD GOAL CHECKPOINT
             </h3>
 
             <form onSubmit={handleSaveSubItem} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1">ACTION ITEM TITLE *</label>
+                <label className="block text-slate-300 mb-1">CHECKPOINT TITLE *</label>
                 <input
                   type="text"
                   required
@@ -469,7 +469,7 @@ export default function LongTermGoals() {
                   type="submit"
                   className="px-4 py-2 bg-[#00f0ff]/20 border border-[#00f0ff] text-[#00f0ff] font-bold rounded hover:bg-[#00f0ff]/30"
                 >
-                  ADD ACTION SUBROUTINE
+                  ADD CHECKPOINT
                 </button>
               </div>
             </form>
@@ -477,7 +477,7 @@ export default function LongTermGoals() {
         </div>
       )}
 
-      {/* Effort Selection Modal for Sub Action */}
+      {/* Effort Selection Modal for Checkpoint */}
       <EffortSelectModal
         isOpen={Boolean(completingSub)}
         onClose={() => setCompletingSub(null)}

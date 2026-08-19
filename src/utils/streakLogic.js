@@ -45,7 +45,9 @@ export const EFFORT_TIERS = {
  */
 export async function runDailyStateChecker() {
   const habits = await db.habits.toArray();
+  const tasks = await db.tasks.toArray();
   const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date(todayStr);
 
   for (const habit of habits) {
     let updated = false;
@@ -64,8 +66,7 @@ export async function runDailyStateChecker() {
     dailyLogs.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // Determine missed days up to yesterday
-    const creationDate = habit.creationDate ? new Date(habit.creationDate) : new Date();
-    const today = new Date(todayStr);
+    const creationDate = habit.creationDate ? new Date(habit.creationDate) : new Date(todayStr);
 
     // Iterate through past days starting from creationDate up to yesterday
     let checkDate = new Date(creationDate);
@@ -95,6 +96,66 @@ export async function runDailyStateChecker() {
         currentStreak: newCurrentStreak,
         dailyEffortLogs: dailyLogs,
         type: newType
+      });
+    }
+  }
+
+  // Daily Tasks Logic
+  for (const task of tasks) {
+    if (!task.isDaily) continue;
+
+    let updated = false;
+    let dailyLogs = [...(task.dailyEffortLogs || [])];
+    const creationDate = task.createdAt ? new Date(task.createdAt.split('T')[0]) : new Date(todayStr);
+
+    // If task was completed in the past, ensure it's in the logs before we fill 'zero's
+    if (task.completedAt) {
+      const existingLog = dailyLogs.find(l => l.date === task.completedAt);
+      if (!existingLog) {
+        dailyLogs.push({
+          date: task.completedAt,
+          effort: task.effort || 'full',
+          timestamp: new Date(task.completedAt).getTime()
+        });
+        updated = true;
+      }
+    }
+
+    // Fill in missed days up to yesterday
+    let checkDate = new Date(creationDate);
+    while (checkDate < today) {
+      const dateStr = checkDate.toISOString().split('T')[0];
+      const existingLog = dailyLogs.find(l => l.date === dateStr);
+
+      if (!existingLog) {
+        dailyLogs.push({
+          date: dateStr,
+          effort: 'zero',
+          timestamp: checkDate.getTime()
+        });
+        updated = true;
+      }
+      checkDate.setDate(checkDate.getDate() + 1);
+    }
+
+    // Reset status if completed before today
+    let newStatus = task.status;
+    let newEffort = task.effort;
+    let newCompletedAt = task.completedAt;
+
+    if (task.status === 'completed' && task.completedAt !== todayStr) {
+      newStatus = 'pending';
+      newEffort = null;
+      newCompletedAt = null;
+      updated = true;
+    }
+
+    if (updated) {
+      await db.tasks.update(task.id, {
+        dailyEffortLogs: dailyLogs,
+        status: newStatus,
+        effort: newEffort,
+        completedAt: newCompletedAt
       });
     }
   }
@@ -157,12 +218,34 @@ export function calculateEffortTelemetry(habits = [], tasks = [], goals = []) {
     });
   });
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   tasks.forEach(t => {
-    if (t.status === 'completed') {
-      if (t.effort === 'full') fullCount++;
-      else if (t.effort === 'partial') partialCount++;
-      else if (t.effort === 'lazy') lazyCount++;
-      else if (t.effort === 'zero') zeroCount++;
+    if (t.isDaily) {
+      (t.dailyEffortLogs || []).forEach(log => {
+        if (log.effort === 'full') fullCount++;
+        else if (log.effort === 'partial') partialCount++;
+        else if (log.effort === 'lazy') lazyCount++;
+        else if (log.effort === 'zero') zeroCount++;
+      });
+      
+      // Add today's completion if it hasn't been swept into the log yet
+      if (t.status === 'completed' && t.completedAt === todayStr) {
+         const existing = (t.dailyEffortLogs || []).find(l => l.date === t.completedAt);
+         if (!existing) {
+           if (t.effort === 'full') fullCount++;
+           else if (t.effort === 'partial') partialCount++;
+           else if (t.effort === 'lazy') lazyCount++;
+           else if (t.effort === 'zero') zeroCount++;
+         }
+      }
+    } else {
+      if (t.status === 'completed') {
+        if (t.effort === 'full') fullCount++;
+        else if (t.effort === 'partial') partialCount++;
+        else if (t.effort === 'lazy') lazyCount++;
+        else if (t.effort === 'zero') zeroCount++;
+      }
     }
   });
 

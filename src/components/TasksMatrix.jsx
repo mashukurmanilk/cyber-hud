@@ -19,6 +19,8 @@ export default function TasksMatrix() {
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [linkedGoalId, setLinkedGoalId] = useState('');
+  const [linkedCheckpointId, setLinkedCheckpointId] = useState('');
+  const [isDaily, setIsDaily] = useState(false);
 
   // Effort Modal State
   const [completingTask, setCompletingTask] = useState(null);
@@ -30,6 +32,8 @@ export default function TasksMatrix() {
     setDescription('');
     setDueDate(new Date().toISOString().split('T')[0]);
     setLinkedGoalId('');
+    setLinkedCheckpointId('');
+    setIsDaily(false);
     setIsModalOpen(true);
   };
 
@@ -40,6 +44,8 @@ export default function TasksMatrix() {
     setDescription(task.description || '');
     setDueDate(task.dueDate || new Date().toISOString().split('T')[0]);
     setLinkedGoalId(task.linkedGoalId || '');
+    setLinkedCheckpointId(task.linkedCheckpointId || '');
+    setIsDaily(task.isDaily || false);
     setIsModalOpen(true);
   };
 
@@ -53,7 +59,9 @@ export default function TasksMatrix() {
         title: title.trim(),
         description: description.trim(),
         dueDate,
-        linkedGoalId: linkedGoalId || null
+        linkedGoalId: linkedGoalId || null,
+        linkedCheckpointId: linkedCheckpointId || null,
+        isDaily
       });
     } else {
       await db.tasks.add({
@@ -64,6 +72,8 @@ export default function TasksMatrix() {
         status: 'pending',
         effort: null,
         linkedGoalId: linkedGoalId || null,
+        linkedCheckpointId: linkedCheckpointId || null,
+        isDaily,
         completedAt: null,
         createdAt: new Date().toISOString()
       });
@@ -97,6 +107,8 @@ export default function TasksMatrix() {
   const handleSelectEffort = async (effortTier) => {
     if (!completingTask) return;
     const todayStr = new Date().toISOString().split('T')[0];
+    // We update status, but if isDaily, streakLogic will reset it tomorrow 
+    // and log the effort into dailyEffortLogs.
     await db.tasks.update(completingTask.id, {
       status: 'completed',
       effort: effortTier,
@@ -169,6 +181,7 @@ export default function TasksMatrix() {
             const isDone = task.status === 'completed';
             const effortInfo = task.effort ? EFFORT_TIERS[task.effort] : null;
             const linkedGoal = goals.find((g) => g.id === task.linkedGoalId);
+            const linkedCheckpoint = linkedGoal ? (linkedGoal.subActionItems || []).find(c => c.id === task.linkedCheckpointId) : null;
 
             return (
               <div
@@ -230,9 +243,22 @@ export default function TasksMatrix() {
                       </span>
 
                       {linkedGoal && (
-                        <span className="flex items-center gap-1 text-[#ff007f] truncate">
-                          <Target className="w-3.5 h-3.5 shrink-0" />
-                          GOAL: {linkedGoal.title}
+                        <div className="flex flex-col gap-1 truncate">
+                          <span className="flex items-center gap-1 text-[#ff007f]">
+                            <Target className="w-3.5 h-3.5 shrink-0" />
+                            GOAL: {linkedGoal.title}
+                          </span>
+                          {linkedCheckpoint && (
+                            <span className="flex items-center gap-1 text-[#9d4edd] ml-4 text-[10px]">
+                              ↳ CHECKPOINT: {linkedCheckpoint.title}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      
+                      {task.isDaily && (
+                        <span className="flex items-center gap-1 text-[#ffe600] border border-[#ffe600]/40 px-1.5 rounded">
+                          [DAILY]
                         </span>
                       )}
                     </div>
@@ -299,7 +325,8 @@ export default function TasksMatrix() {
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full bg-[#0b0c16] border border-[#00f0ff]/30 rounded p-2.5 text-slate-100 focus:outline-none focus:border-[#00f0ff]"
+                    disabled={isDaily}
+                    className="w-full bg-[#0b0c16] border border-[#00f0ff]/30 rounded p-2.5 text-slate-100 focus:outline-none focus:border-[#00f0ff] disabled:opacity-50"
                   />
                 </div>
 
@@ -307,7 +334,7 @@ export default function TasksMatrix() {
                   <label className="block text-slate-300 mb-1">LINK TO GOAL</label>
                   <select
                     value={linkedGoalId}
-                    onChange={(e) => setLinkedGoalId(e.target.value)}
+                    onChange={(e) => { setLinkedGoalId(e.target.value); setLinkedCheckpointId(''); }}
                     className="w-full bg-[#0b0c16] border border-[#00f0ff]/30 rounded p-2.5 text-slate-100 focus:outline-none focus:border-[#00f0ff]"
                   >
                     <option value="">-- UNLINKED --</option>
@@ -318,6 +345,35 @@ export default function TasksMatrix() {
                     ))}
                   </select>
                 </div>
+              </div>
+              
+              {linkedGoalId && (
+                <div>
+                  <label className="block text-slate-300 mb-1">LINK TO CHECKPOINT</label>
+                  <select
+                    value={linkedCheckpointId}
+                    onChange={(e) => setLinkedCheckpointId(e.target.value)}
+                    className="w-full bg-[#0b0c16] border border-[#00f0ff]/30 rounded p-2.5 text-slate-100 focus:outline-none focus:border-[#00f0ff]"
+                  >
+                    <option value="">-- NO CHECKPOINT --</option>
+                    {(goals.find(g => g.id === linkedGoalId)?.subActionItems || []).map((cp) => (
+                      <option key={cp.id} value={cp.id}>
+                        {cp.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              <div className="flex items-center gap-2 mt-2">
+                <input 
+                  type="checkbox" 
+                  id="isDailyToggle" 
+                  checked={isDaily}
+                  onChange={(e) => setIsDaily(e.target.checked)}
+                  className="w-4 h-4 accent-[#00f0ff]"
+                />
+                <label htmlFor="isDailyToggle" className="text-slate-300">DAILY RECURRING (Resets at 00:00)</label>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-[#00f0ff]/20">
