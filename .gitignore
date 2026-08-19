@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+LEARNING_GUIDE.md
+vercel.txt
